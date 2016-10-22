@@ -179,7 +179,7 @@ const (
 		  {
 			  "id": "235",
 			  "name": "Jaroslav Plasil",
-			  "age": "34"
+			  "age": 34
 		  },
 		  {
 			  "id": "6",

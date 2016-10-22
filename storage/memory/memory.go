@@ -2,6 +2,7 @@ package memory
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/urandom/team-search-test/download"
@@ -24,7 +25,7 @@ type teamData struct {
 type playerData struct {
 	Id   football.PlayerId `json:"id"`
 	Name string            `json:"name"`
-	Age  int               `json:"age,string"`
+	Age  interface{}       `json:"age"`
 }
 
 type memory struct {
@@ -117,9 +118,18 @@ func (m *memory) initialize(data <-chan download.Team) {
 				player.Teams = append(player.Teams, td.Id)
 				m.players[p.Id] = player
 			} else {
+				var age int
+				switch v := p.Age.(type) {
+				case int:
+					age = v
+				case string:
+					// Ignore the error, we can't do anything if the string
+					// isn't numerical
+					age, _ = strconv.Atoi(v)
+				}
 				m.players[p.Id] = football.Player{
 					Id: p.Id, Name: p.Name,
-					Age: p.Age, Teams: []football.TeamId{td.Id},
+					Age: age, Teams: []football.TeamId{td.Id},
 				}
 			}
 		}
