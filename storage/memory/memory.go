@@ -1,0 +1,148 @@
+package memory
+
+import (
+	"encoding/json"
+
+	"github.com/pkg/errors"
+	"github.com/urandom/team-search-test/download"
+	"github.com/urandom/team-search-test/football"
+)
+
+type jsonData struct {
+	Data struct {
+		Team teamData `json:"team"`
+	} `json:"data"`
+}
+
+type teamData struct {
+	Id         football.TeamId `json:"id"`
+	Name       string          `json:"name"`
+	IsNational bool            `json:"IsNational"`
+	Players    []playerData    `json:"players"`
+}
+
+type playerData struct {
+	Id   football.PlayerId `json:"id"`
+	Name string            `json:"name"`
+	Age  int               `json:"age,string"`
+}
+
+type memory struct {
+	teams         map[football.TeamId]football.Team
+	players       map[football.PlayerId]football.Player
+	teamNameIndex map[string]football.TeamId
+
+	init      chan struct{}
+	initError error
+}
+
+// NewTeamRepository creates an in-memory team repository from the download
+// data. It will start initializing the storage data from the download channel,
+// blocking any queries until done. If an error occurs during initialization,
+// all repository methods will return an initializer error.
+func NewTeamRepository(data <-chan download.Team) football.TeamRepository {
+	m := &memory{
+		teams:         make(map[football.TeamId]football.Team),
+		players:       make(map[football.PlayerId]football.Player),
+		teamNameIndex: make(map[string]football.TeamId),
+		init:          make(chan struct{}),
+	}
+
+	go m.initialize(data)
+
+	return m
+}
+
+// GetTeam returns a football team given an id. It will block until the storage
+// has been initialized with the download data. If the given id doesn't match
+// any known team, the returned error will be a not-found error.
+func (m *memory) GetTeam(id football.TeamId) (football.Team, error) {
+	<-m.init
+
+	if m.initError != nil {
+		return football.Team{}, initError{errors.Wrapf(m.initError, "getting team %d", id)}
+	}
+
+	return m.getTeam(id)
+}
+
+// GetTeamByName finds a team by its name. It will block until the storage has
+// been initialized. If the given name doesn't match any known team, the returned
+// error will be a not-found error.
+func (m *memory) GetTeamByName(name string) (football.Team, error) {
+	<-m.init
+
+	if m.initError != nil {
+		return football.Team{}, initError{errors.Wrapf(m.initError, "getting team %s", name)}
+	}
+
+	if id, ok := m.teamNameIndex[name]; ok {
+		return m.getTeam(id)
+	} else {
+		return football.Team{}, notFoundError{errors.Errorf("no team for %s", name)}
+	}
+}
+
+// GetPlayer returns a football player given an id. It will block until the
+// storage has been initialized. If the given id doesn't match any known player,
+// the returned error will be a not-found error.
+func (m *memory) GetPlayer(id football.PlayerId) (football.Player, error) {
+	<-m.init
+
+	if m.initError != nil {
+		return football.Player{}, initError{errors.Wrapf(m.initError, "getting player %d", id)}
+	}
+
+	if p, ok := m.players[id]; ok {
+		return p, nil
+	} else {
+		return football.Player{}, notFoundError{errors.Errorf("no player for %d", id)}
+	}
+}
+
+func (m *memory) initialize(data <-chan download.Team) {
+	defer close(m.init)
+
+	for d := range data {
+		var j jsonData
+
+		err := json.Unmarshal(d.Bytes, &j)
+		if err != nil {
+			m.initError = errors.Wrapf(err, "parsing team data for %d", d.Id)
+			return
+		}
+
+		td := j.Data.Team
+
+		playerIds := []football.PlayerId{}
+
+		for _, p := range td.Players {
+			playerIds = append(playerIds, p.Id)
+
+			if player, ok := m.players[p.Id]; ok {
+				player.Teams = append(player.Teams, td.Id)
+				m.players[p.Id] = player
+			} else {
+				m.players[p.Id] = football.Player{
+					Id: p.Id, Name: p.Name,
+					Age: p.Age, Teams: []football.TeamId{td.Id},
+				}
+			}
+		}
+
+		m.teams[td.Id] = football.Team{
+			Id: td.Id, Name: td.Name,
+			IsNational: td.IsNational, Players: playerIds,
+		}
+
+		m.teamNameIndex[td.Name] = td.Id
+	}
+}
+
+func (m *memory) getTeam(id football.TeamId) (football.Team, error) {
+	if t, ok := m.teams[id]; ok {
+		return t, nil
+	} else {
+		return football.Team{}, notFoundError{errors.Errorf("no team for %d", id)}
+	}
+}
