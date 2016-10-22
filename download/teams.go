@@ -18,14 +18,15 @@ var (
 	errNotFound = fmt.Errorf("not found")
 )
 
-// Opts represents the options for the downloader
-type Opts struct {
-	// Endpoint is the url in string format. It should contain an integer verb
-	Endpoint string
-	// The timeout per request
-	Timeout time.Duration
-	// The number of simultaneous downloads
-	Workers int
+type options struct {
+	endpoint string
+	timeout  time.Duration
+	workers  int
+}
+
+// Option represents the options for the downloader
+type Option struct {
+	f func(o *options)
 }
 
 // Team is the data downloaded for a specific id
@@ -34,31 +35,51 @@ type Team struct {
 	Id    int
 }
 
+// Endpoint is the url in string format. It should contain an integer verb
+func Endpoint(url string) Option {
+	return Option{func(o *options) {
+		o.endpoint = url
+	}}
+}
+
+// Timeout is the time limit per requests
+func Timeout(timeout time.Duration) Option {
+	return Option{func(o *options) {
+		o.timeout = timeout
+	}}
+}
+
+// Workers is the number of simultaneous downloads
+func Workers(count int) Option {
+	return Option{func(o *options) {
+		o.workers = count
+	}}
+}
+
 // Teams downloads team data from the endpoint ands passes it through the
 // returned channel. The later is closed once it is determined that there are
 // no more teams to download.
-func Teams(opts Opts) <-chan Team {
-	if opts.Endpoint == "" {
-		opts.Endpoint = url
-	}
-	if opts.Workers == 0 {
-		opts.Workers = 10
+func Teams(opts ...Option) <-chan Team {
+	o := options{endpoint: url, workers: 10}
+
+	for _, op := range opts {
+		op.f(&o)
 	}
 
-	problemFeedback := make(chan feedback, opts.Workers)
+	problemFeedback := make(chan feedback, o.workers)
 	data := make(chan Team)
 
 	ids := sequence(problemFeedback)
 
-	client := http.Client{Timeout: opts.Timeout}
+	client := http.Client{Timeout: o.timeout}
 
 	var wg sync.WaitGroup
-	wg.Add(opts.Workers)
+	wg.Add(o.workers)
 
-	for i := 0; i < opts.Workers; i++ {
+	for i := 0; i < o.workers; i++ {
 		go func() {
 			for id := range ids {
-				b, err := getTeam(client, opts.Endpoint, id)
+				b, err := getTeam(client, o.endpoint, id)
 				if err != nil {
 					if err == errNotFound {
 						problemFeedback <- feedback{id, false}

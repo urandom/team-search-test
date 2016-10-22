@@ -35,10 +35,10 @@ func main() {
 		names = flag.Args()
 	}
 
-	repo := memory.NewTeamRepository(download.Teams(download.Opts{
-		Timeout: time.Duration(timeout) * time.Second,
-		Workers: workers,
-	}))
+	repo := memory.NewTeamRepository(download.Teams(
+		download.Timeout(time.Duration(timeout)*time.Second),
+		download.Workers(workers),
+	))
 
 	var logger Logger = nopLogger{}
 	if verbose {

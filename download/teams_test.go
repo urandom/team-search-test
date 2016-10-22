@@ -46,7 +46,7 @@ func TestTeams(t *testing.T) {
 
 	var has1995 bool
 
-	teams := download.Teams(download.Opts{Endpoint: ts.URL + "/%d"})
+	teams := download.Teams(download.Endpoint(ts.URL + "/%d"))
 	for team := range teams {
 		if string(team.Bytes) != strconv.Itoa(team.Id) {
 			t.Fatalf("expected %d, got %s", team.Id, string(team.Bytes))
