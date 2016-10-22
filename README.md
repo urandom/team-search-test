@@ -8,7 +8,7 @@ Test app for listing team players and their active teams
 ## Usage
 Usage printout:
 
-    team-player -h
+    team-players -h
     
 Printng out all players in a given team (or teams):
 
