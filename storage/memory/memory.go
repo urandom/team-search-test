@@ -40,6 +40,9 @@ type memory struct {
 // data. It will start initializing the storage data from the download channel,
 // blocking any queries until done. If an error occurs during initialization,
 // all repository methods will return an initializer error.
+//
+// If a query cannot find a valid entry given the input, a not-found error will
+// be returned.
 func NewTeamRepository(data <-chan download.Team) football.TeamRepository {
 	m := &memory{
 		teams:         make(map[football.TeamId]football.Team),
@@ -53,9 +56,6 @@ func NewTeamRepository(data <-chan download.Team) football.TeamRepository {
 	return m
 }
 
-// GetTeam returns a football team given an id. It will block until the storage
-// has been initialized with the download data. If the given id doesn't match
-// any known team, the returned error will be a not-found error.
 func (m *memory) GetTeam(id football.TeamId) (football.Team, error) {
 	<-m.init
 
@@ -66,9 +66,6 @@ func (m *memory) GetTeam(id football.TeamId) (football.Team, error) {
 	return m.getTeam(id)
 }
 
-// GetTeamByName finds a team by its name. It will block until the storage has
-// been initialized. If the given name doesn't match any known team, the returned
-// error will be a not-found error.
 func (m *memory) GetTeamByName(name string) (football.Team, error) {
 	<-m.init
 
@@ -83,9 +80,6 @@ func (m *memory) GetTeamByName(name string) (football.Team, error) {
 	}
 }
 
-// GetPlayer returns a football player given an id. It will block until the
-// storage has been initialized. If the given id doesn't match any known player,
-// the returned error will be a not-found error.
 func (m *memory) GetPlayer(id football.PlayerId) (football.Player, error) {
 	<-m.init
 
