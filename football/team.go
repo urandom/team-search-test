@@ -46,3 +46,7 @@ func (p Players) Less(i int, j int) bool {
 func (p Players) Swap(i int, j int) {
 	p[i], p[j] = p[j], p[i]
 }
+
+func (p Players) Bytes(i int) []byte {
+	return []byte(p[i].Name)
+}
