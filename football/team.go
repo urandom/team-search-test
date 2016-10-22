@@ -22,6 +22,9 @@ type Player struct {
 	Teams []TeamId
 }
 
+// Players is a player slice alphabetically sortable by player names.
+type Players []Player
+
 // TeamRepository allows queries for teams and players.
 type TeamRepository interface {
 	// GetTeams looks for a team given an id.
@@ -30,4 +33,16 @@ type TeamRepository interface {
 	GetTeamByName(name string) (Team, error)
 	// GetPlayer looks for a player given a player id.
 	GetPlayer(id PlayerId) (Player, error)
+}
+
+func (p Players) Len() int {
+	return len(p)
+}
+
+func (p Players) Less(i int, j int) bool {
+	return p[i].Name < p[j].Name
+}
+
+func (p Players) Swap(i int, j int) {
+	p[i], p[j] = p[j], p[i]
 }
