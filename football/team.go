@@ -33,6 +33,8 @@ type TeamRepository interface {
 	GetTeamByName(name string) (Team, error)
 	// GetPlayer looks for a player given a player id.
 	GetPlayer(id PlayerId) (Player, error)
+	// Close frees any resources held by the repository
+	Close() error
 }
 
 func (p Players) Len() int {

@@ -1,15 +1,16 @@
 // +build go1.7
 
-package memory_test
+package goleveldb_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/urandom/team-search-test/download"
 	"github.com/urandom/team-search-test/football"
 	"github.com/urandom/team-search-test/storage"
-	"github.com/urandom/team-search-test/storage/memory"
+	"github.com/urandom/team-search-test/storage/goleveldb"
 )
 
 type team struct {
@@ -65,7 +66,11 @@ func TestMemoryStorage(t *testing.T) {
 				close(data)
 			}()
 
-			repo := memory.NewTeamRepository(data)
+			defer func() {
+				os.RemoveAll("/tmp/football-teams.db")
+			}()
+
+			repo := goleveldb.NewTeamRepository(data)
 
 			for _, td := range tc.teams {
 				team, err := repo.GetTeam(td.id)
@@ -151,7 +156,11 @@ func TestGarbageData(t *testing.T) {
 		close(data)
 	}()
 
-	repo := memory.NewTeamRepository(data)
+	defer func() {
+		os.RemoveAll("/tmp/football-teams.db")
+	}()
+
+	repo := goleveldb.NewTeamRepository(data)
 	_, err := repo.GetTeam(football.TeamId(1))
 
 	type init interface {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/urandom/team-search-test/download"
 	"github.com/urandom/team-search-test/football"
+	"github.com/urandom/team-search-test/storage/goleveldb"
 	"github.com/urandom/team-search-test/storage/memory"
 )
 
@@ -24,9 +25,10 @@ var (
 		"Barcelona", "Real Madrid", "FC Bayern Munich",
 	}
 
-	timeout int
-	workers int
-	verbose bool
+	timeout     int
+	workers     int
+	verbose     bool
+	leveldbPath string
 )
 
 func main() {
@@ -35,10 +37,17 @@ func main() {
 		names = flag.Args()
 	}
 
-	repo := memory.NewTeamRepository(download.Teams(
+	teams := download.Teams(
 		download.Timeout(time.Duration(timeout)*time.Second),
 		download.Workers(workers),
-	))
+	)
+
+	var repo football.TeamRepository
+	if leveldbPath == "" {
+		repo = memory.NewTeamRepository(teams)
+	} else {
+		repo = goleveldb.NewTeamRepository(teams, goleveldb.Path(leveldbPath))
+	}
 
 	var logger Logger = nopLogger{}
 	if verbose {
@@ -144,6 +153,7 @@ func init() {
 	flag.IntVar(&workers, "workers", 20, "number of concurrent download workers")
 	flag.IntVar(&timeout, "timeout", 10, "network request timeout, in seconds")
 	flag.BoolVar(&verbose, "v", false, "verbose outout")
+	flag.StringVar(&leveldbPath, "leveldb-path", "", "if specified, leveldb will be used to cache the team download")
 	flag.Usage = usage
 	flag.Parse()
 }

@@ -7,26 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urandom/team-search-test/download"
 	"github.com/urandom/team-search-test/football"
+	"github.com/urandom/team-search-test/storage"
 )
-
-type jsonData struct {
-	Data struct {
-		Team teamData `json:"team"`
-	} `json:"data"`
-}
-
-type teamData struct {
-	Id         football.TeamId `json:"id"`
-	Name       string          `json:"name"`
-	IsNational bool            `json:"IsNational"`
-	Players    []playerData    `json:"players"`
-}
-
-type playerData struct {
-	Id   football.PlayerId `json:"id"`
-	Name string            `json:"name"`
-	Age  interface{}       `json:"age"`
-}
 
 type memory struct {
 	teams         map[football.TeamId]football.Team
@@ -44,6 +26,8 @@ type memory struct {
 //
 // If a query cannot find a valid entry given the input, a not-found error will
 // be returned.
+//
+// The in-memory storage doesn't require to be closed.
 func NewTeamRepository(data <-chan download.Team) football.TeamRepository {
 	m := &memory{
 		teams:         make(map[football.TeamId]football.Team),
@@ -95,11 +79,15 @@ func (m *memory) GetPlayer(id football.PlayerId) (football.Player, error) {
 	}
 }
 
+func (m *memory) Close() error {
+	return nil
+}
+
 func (m *memory) initialize(data <-chan download.Team) {
 	defer close(m.init)
 
 	for d := range data {
-		var j jsonData
+		var j storage.JsonData
 
 		err := json.Unmarshal(d.Bytes, &j)
 		if err != nil {
